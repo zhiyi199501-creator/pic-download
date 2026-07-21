@@ -3,4 +3,5 @@ __pycache__/
 .venv/
 venv/
 downloads/
+.playwright-cli/
 .DS_Store

@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网页图片下载器</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f7fb;
+      color: #1f2937;
+    }
+    .wrap {
+      max-width: 860px;
+      margin: 40px auto;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      padding: 24px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+    }
+    p.desc {
+      margin: 0 0 20px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+    .field {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    input[type="text"],
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      background: #fff;
+      color: #111827;
+      font-family: inherit;
+    }
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+    }
+    .hint {
+      margin-top: 6px;
+      color: #6b7280;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: 0;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #fff;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    button.secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+    .msg {
+      margin-top: 16px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+    }
+    .msg.show { display: block; }
+    .ok { background: #dcfce7; color: #166534; }
+    .err { background: #fee2e2; color: #991b1b; }
+    .panel {
+      margin-top: 16px;
+      display: none;
+    }
+    .panel.show { display: block; }
+    .progress-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: #4b5563;
+    }
+    .progress-track {
+      height: 12px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3b82f6, #2563eb);
+      transition: width 0.2s ease;
+    }
+    .stats {
+      margin-top: 10px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: #374151;
+    }
+    .log-box {
+      margin-top: 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #0b1220;
+      color: #e5e7eb;
+      height: 280px;
+      overflow: auto;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .log-line.info { color: #cbd5e1; }
+    .log-line.ok { color: #86efac; }
+    .log-line.error { color: #fca5a5; }
+    .result {
+      margin-top: 16px;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fafafa;
+      font-size: 14px;
+      display: none;
+    }
+    .result.show { display: block; }
+    .section-title {
+      margin-top: 12px;
+      font-weight: 600;
+    }
+    .failures {
+      margin-top: 8px;
+      border: 1px solid #fecaca;
+      background: #fff5f5;
+      border-radius: 8px;
+      max-height: 220px;
+      overflow: auto;
+    }
+    .failures table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .failures th,
+    .failures td {
+      text-align: left;
+      padding: 8px 10px;
+      vertical-align: top;
+      border-bottom: 1px solid #fecaca;
+      word-break: break-all;
+    }
+    .failures th {
+      position: sticky;
+      top: 0;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .failures tr:last-child td { border-bottom: 0; }
+    .reason {
+      color: #b91c1c;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>网页图片下载器</h1>
+      <p class="desc">输入网址和保存地址，实时查看下载进度与日志。</p>
+
+      <form id="download-form">
+        <div class="field">
+          <label for="url">网址</label>
+          <input id="url" name="url" type="text" placeholder="例如：https://example.com" required>
+        </div>
+        <div class="field">
+          <label for="output">保存地址</label>
+          <input id="output" name="output" type="text" placeholder="留空则自动保存到 downloads/default-当前时间">
+        </div>
+        <div class="field">
+          <label for="cookie">Cookie（可选，知乎等站点需要）</label>
+          <textarea id="cookie" name="cookie" placeholder="从浏览器复制的 cookie 字符串，例如：d_c0=...; z_c0=...; _xsrf=..."></textarea>
+          <div class="hint">知乎获取方式：浏览器打开文章 → F12 → Network → 刷新 → 点选文档请求 → Request Headers 复制 cookie</div>
+        </div>
+        <div class="actions">
+          <button id="start-btn" type="submit">开始下载</button>
+          <button id="open-btn" class="secondary" type="button">打开保存目录</button>
+        </div>
+      </form>
+
+      <div id="message" class="msg ok"></div>
+      <div id="error" class="msg err"></div>
+
+      <div id="progress-panel" class="panel">
+        <div class="progress-head">
+          <span id="progress-text">准备中...</span>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="progress-track">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <div class="stats">
+          <span>总数：<strong id="stat-total">0</strong></span>
+          <span>成功：<strong id="stat-success">0</strong></span>
+          <span>失败：<strong id="stat-fail">0</strong></span>
+        </div>
+        <div id="log-box" class="log-box" aria-live="polite"></div>
+      </div>
+
+      <div id="result" class="result"></div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("download-form");
+    const urlInput = document.getElementById("url");
+    const outputInput = document.getElementById("output");
+    const cookieInput = document.getElementById("cookie");
+    const startBtn = document.getElementById("start-btn");
+    const openBtn = document.getElementById("open-btn");
+    const messageEl = document.getElementById("message");
+    const errorEl = document.getElementById("error");
+    const progressPanel = document.getElementById("progress-panel");
+    const progressBar = document.getElementById("progress-bar");
+    const progressText = document.getElementById("progress-text");
+    const progressPercent = document.getElementById("progress-percent");
+    const statTotal = document.getElementById("stat-total");
+    const statSuccess = document.getElementById("stat-success");
+    const statFail = document.getElementById("stat-fail");
+    const logBox = document.getElementById("log-box");
+    const resultEl = document.getElementById("result");
+
+    let latestOutputDir = "";
+
+    function showMessage(text) {
+      messageEl.textContent = text;
+      messageEl.classList.add("show");
+    }
+
+    function showError(text) {
+      errorEl.textContent = text;
+      errorEl.classList.add("show");
+    }
+
+    function clearAlerts() {
+      messageEl.classList.remove("show");
+      errorEl.classList.remove("show");
+      messageEl.textContent = "";
+      errorEl.textContent = "";
+    }
+
+    function appendLog(message, level = "info") {
+      const line = document.createElement("div");
+      line.className = `log-line ${level}`;
+      line.textContent = message;
+      logBox.appendChild(line);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function setProgress(current, total, success, fail) {
+      const safeTotal = total || 0;
+      const percent = safeTotal > 0 ? Math.round((current / safeTotal) * 100) : 0;
+      progressBar.style.width = `${percent}%`;
+      progressPercent.textContent = `${percent}%`;
+      progressText.textContent = safeTotal > 0
+        ? `进度 ${current}/${safeTotal}`
+        : "准备中...";
+      statTotal.textContent = String(safeTotal);
+      statSuccess.textContent = String(success || 0);
+      statFail.textContent = String(fail || 0);
+    }
+
+    function renderResult(result) {
+      latestOutputDir = result.output_dir || latestOutputDir;
+      let html = `
+        <div><strong>归一化网址：</strong>${escapeHtml(result.url || "")}</div>
+        <div><strong>保存目录：</strong>${escapeHtml(result.output_dir || "")}</div>
+        <div><strong>发现图片：</strong>${result.total_found || 0}</div>
+        <div><strong>下载成功：</strong>${result.success_count || 0}</div>
+        <div><strong>下载失败：</strong>${result.fail_count || 0}</div>
+      `;
+
+      if (result.saved_files && result.saved_files.length) {
+        html += `<div class="section-title">成功文件</div><ul>`;
+        for (const file of result.saved_files) {
+          html += `<li>${escapeHtml(file)}</li>`;
+        }
+        html += `</ul>`;
+      }
+
+      if (result.failures && result.failures.length) {
+        html += `
+          <div class="section-title">失败明细</div>
+          <div class="failures">
+            <table>
+              <thead>
+                <tr><th style="width:28%;">原因</th><th>图片地址</th></tr>
+              </thead>
+              <tbody>
+        `;
+        for (const item of result.failures) {
+          html += `
+            <tr>
+              <td class="reason">${escapeHtml(item.reason || "")}</td>
+              <td>${escapeHtml(item.url || "")}</td>
+            </tr>
+          `;
+        }
+        html += `</tbody></table></div>`;
+      }
+
+      resultEl.innerHTML = html;
+      resultEl.classList.add("show");
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    async function openFolder() {
+      clearAlerts();
+      const payload = {
+        path: latestOutputDir,
+        url: urlInput.value.trim(),
+        output: outputInput.value.trim(),
+      };
+      try {
+        const resp = await fetch("/api/open-folder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) {
+          showError(data.message || "打开目录失败");
+          return;
+        }
+        latestOutputDir = data.path || latestOutputDir;
+        showMessage(`已打开目录：${data.path}`);
+      } catch (err) {
+        showError(`打开目录失败：${err}`);
+      }
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearAlerts();
+      resultEl.classList.remove("show");
+      resultEl.innerHTML = "";
+      logBox.innerHTML = "";
+      progressPanel.classList.add("show");
+      setProgress(0, 0, 0, 0);
+      startBtn.disabled = true;
+      appendLog("开始任务...", "info");
+
+      try {
+        const resp = await fetch("/api/download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: urlInput.value.trim(),
+            output: outputInput.value.trim(),
+            cookie: cookieInput.value.trim(),
+          }),
+        });
+
+        if (!resp.ok || !resp.body) {
+          const data = await resp.json().catch(() => ({}));
+          throw new Error(data.message || `请求失败（${resp.status}）`);
+        }
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const event = JSON.parse(line);
+            handleEvent(event);
+          }
+        }
+
+        if (buffer.trim()) {
+          handleEvent(JSON.parse(buffer));
+        }
+      } catch (err) {
+        showError(String(err.message || err));
+        appendLog(String(err.message || err), "error");
+      } finally {
+        startBtn.disabled = false;
+      }
+    });
+
+    function handleEvent(event) {
+      const type = event.type;
+      if (event.output_dir) {
+        latestOutputDir = event.output_dir;
+      }
+
+      if (type === "status" || type === "found") {
+        appendLog(event.message || "", "info");
+        if (typeof event.total === "number") {
+          setProgress(0, event.total, 0, 0);
+        }
+        return;
+      }
+
+      if (type === "item_start") {
+        setProgress(event.current, event.total, event.success, event.fail);
+        appendLog(event.message || "", "info");
+        return;
+      }
+
+      if (type === "item_ok") {
+        setProgress(event.current, event.total, event.success, event.fail);
+        appendLog(event.message || "", "ok");
+        return;
+      }
+
+      if (type === "item_fail") {
+        setProgress(event.current, event.total, event.success, event.fail);
+        appendLog(event.message || "", "error");
+        return;
+      }
+
+      if (type === "done") {
+        appendLog(event.message || "完成", "ok");
+        showMessage(event.message || "下载完成");
+        if (event.result) {
+          setProgress(
+            event.result.total_found || 0,
+            event.result.total_found || 0,
+            event.result.success_count || 0,
+            event.result.fail_count || 0
+          );
+          renderResult(event.result);
+        }
+        return;
+      }
+
+      if (type === "error") {
+        showError(event.message || "下载失败");
+        appendLog(event.message || "下载失败", "error");
+      }
+    }
+
+    openBtn.addEventListener("click", openFolder);
+  </script>
+</body>
+</html>

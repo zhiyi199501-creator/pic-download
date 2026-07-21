@@ -11,11 +11,17 @@
 - 自动将相对路径转为绝对 URL
 - 跳过 `data:` 内联图片
 - 按序号命名，避免文件名冲突
+- 多线程并发下载（默认 8 线程）
+- 超时自动重试（默认 3 次）
+- 支持从 JS 页面源码中提取图片链接
+- 针对百度图片（image.baidu.com）走专用接口解析
+- 对 JS 动态页面（如 aiaha.xyz）自动用 Playwright 渲染后提取图片
 
 ## 安装
 
 ```bash
 pip install -r requirements.txt
+python -m playwright install chromium
 ```
 
 ## 使用
@@ -31,7 +37,25 @@ python download_images.py https://example.com -o ./my-images
 python download_images.py https://example.com -t 60
 ```
 
-图片默认保存到 `downloads/<域名>/` 目录。
+图片默认保存到 `downloads/default-当前时间/` 目录，例如 `downloads/default-20260721-181430/`。
+
+## Web 页面
+
+如果你想通过页面输入网址和保存地址：
+
+```bash
+pip install -r requirements.txt
+python web_app.py
+```
+
+然后打开浏览器访问：
+
+`http://127.0.0.1:5000`
+
+页面包含两个输入框：
+
+- 网址
+- 保存地址
 
 ## 示例
 
@@ -43,9 +67,9 @@ python download_images.py https://www.python.org
 
 ```
 正在获取页面: https://www.python.org
-找到 12 张图片，保存到: /path/to/downloads/www.python.org
+找到 12 张图片，保存到: /path/to/downloads/default-20260721-181430
 [1/12] https://www.python.org/static/img/python-logo.png
-  已保存: downloads/www.python.org/001_python-logo.png
+  已保存: downloads/default-20260721-181430/001_python-logo.png
 ...
 完成: 成功 12/12
 ```
