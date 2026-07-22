@@ -185,6 +185,28 @@ def looks_like_image_url(url: str) -> bool:
     return False
 
 
+def is_valid_network_url(url: str) -> bool:
+    """Reject malformed URLs that can trigger idna encoding failures."""
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    host = parsed.hostname
+    if not host:
+        return False
+    host = host.strip(".")
+    if not host or len(host) > 253:
+        return False
+    if " " in host:
+        return False
+    labels = host.split(".")
+    if any(not label or len(label) > 63 for label in labels):
+        return False
+    return True
+
+
 def unwrap_next_image_url(url: str) -> str:
     """Expand Next.js /_next/image?url=... back to the original image URL."""
     parsed = urlparse(url)
@@ -219,6 +241,8 @@ def normalize_embedded_url(raw_url: str) -> str | None:
     ):
         return None
     url = unwrap_next_image_url(url)
+    if not is_valid_network_url(url):
+        return None
     return url
 
 
@@ -679,6 +703,15 @@ def download_image(
                 print(f"  超时重试 ({attempt + 1}/{retry_times}): {url}")
                 continue
             break
+        except UnicodeError as exc:
+            # Some malformed extracted URLs fail during idna encoding.
+            reason = f"URL 无效（域名编码失败: {exc}）"
+            print(f"  下载失败: {url} ({reason})")
+            return None, reason
+        except Exception as exc:  # noqa: BLE001
+            reason = f"未知请求错误（{exc}）"
+            print(f"  下载失败: {url} ({reason})")
+            return None, reason
 
     reason = format_download_error(
         last_exc or RuntimeError("未知错误"),
