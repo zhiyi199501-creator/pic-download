@@ -41,10 +41,10 @@ def format_request_error(exc: requests.RequestException, url: str = "") -> str:
     return f"下载失败：{exc}"
 
 
-def resolve_output_dir(output: str) -> Path:
+def resolve_output_dir(url: str, output: str) -> Path:
     if output.strip():
         return Path(output.strip()).expanduser().resolve()
-    return default_output_dir().resolve()
+    return default_output_dir(url).resolve()
 
 
 @app.route("/")
@@ -103,7 +103,7 @@ def api_open_folder():
     if path_value:
         target = Path(path_value).expanduser().resolve()
     elif url or output:
-        target = resolve_output_dir(output)
+        target = resolve_output_dir(url, output)
     else:
         return jsonify({"ok": False, "message": "缺少目录路径。"}), 400
 

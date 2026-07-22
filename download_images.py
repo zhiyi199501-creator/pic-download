@@ -688,9 +688,47 @@ def download_image(
     return None, reason
 
 
-def default_output_dir() -> Path:
+def site_name_from_url(url: str) -> str:
+    """Extract a short site name, e.g. https://www.baidu.com/ -> baidu."""
+    host = urlparse(normalize_page_url(url)).hostname or ""
+    host = host.lower().strip(".")
+    if not host:
+        return "site"
+
+    # IPv4 / IPv6-ish
+    if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", host) or ":" in host:
+        return re.sub(r"[^0-9a-zA-Z]+", "-", host).strip("-") or "site"
+
+    parts = [p for p in host.split(".") if p]
+    if parts and parts[0] == "www":
+        parts = parts[1:]
+    if not parts:
+        return "site"
+
+    multi_tlds = {
+        "com.cn",
+        "net.cn",
+        "org.cn",
+        "gov.cn",
+        "co.uk",
+        "com.hk",
+        "com.tw",
+    }
+    if len(parts) >= 3 and ".".join(parts[-2:]) in multi_tlds:
+        name = parts[-3]
+    elif len(parts) >= 2:
+        name = parts[-2]
+    else:
+        name = parts[0]
+
+    name = re.sub(r"[^0-9a-zA-Z_-]+", "-", name).strip("-_")
+    return name or "site"
+
+
+def default_output_dir(url: str | None = None) -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return Path("downloads") / f"default-{stamp}"
+    site = site_name_from_url(url) if url else "site"
+    return Path("downloads") / f"{site}-{stamp}"
 
 
 def normalize_page_url(url: str) -> str:
@@ -710,7 +748,7 @@ def iter_download(
 ):
     """Yield progress events while downloading images."""
     normalized_url = normalize_page_url(url)
-    output_dir = Path(output) if output else default_output_dir()
+    output_dir = Path(output) if output else default_output_dir(normalized_url)
     output_dir.mkdir(parents=True, exist_ok=True)
     resolved_output = str(output_dir.resolve())
     cookie = (cookie or "").strip() or None
@@ -886,7 +924,7 @@ def main() -> int:
     parser.add_argument(
         "-o",
         "--output",
-        help="保存目录（默认: downloads/default-当前时间）",
+        help="保存目录（默认: downloads/网址名-当前时间）",
     )
     parser.add_argument(
         "-t",

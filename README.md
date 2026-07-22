@@ -37,7 +37,7 @@ python download_images.py https://example.com -o ./my-images
 python download_images.py https://example.com -t 60
 ```
 
-图片默认保存到 `downloads/default-当前时间/` 目录，例如 `downloads/default-20260721-181430/`。
+图片默认保存到 `downloads/网址名-当前时间/` 目录，例如 `https://www.baidu.com/` 会保存到 `downloads/baidu-20260722-124800/`。
 
 ## Web 页面
 
@@ -67,9 +67,9 @@ python download_images.py https://www.python.org
 
 ```
 正在获取页面: https://www.python.org
-找到 12 张图片，保存到: /path/to/downloads/default-20260721-181430
+找到 12 张图片，保存到: /path/to/downloads/python-20260722-124800
 [1/12] https://www.python.org/static/img/python-logo.png
-  已保存: downloads/default-20260721-181430/001_python-logo.png
+  已保存: downloads/python-20260722-124800/001_python-logo.png
 ...
 完成: 成功 12/12
 ```
